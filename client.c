@@ -6,16 +6,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
-//did not add a run target for the makefile like the other
-//this program only works if server is run first, then client 
 
 int buff_size = 256;
-int send, receive;
+int send, receive, server_pid;
 
 static void sighandler(int signo) {
-    //not entirely sure why ctrl + c on the client kills the server (on a separate terminal too!),
-    //so I had to put this here to catch it
     if (signo == SIGINT) {
+        //experimented with a lot of ways, but sending a SIGPIPE signal to server most reliably reset it
+        kill(server_pid, SIGPIPE);
         close(send);
         close(receive);
         exit(0);
@@ -40,10 +38,13 @@ int main() {
     receive = open(private_pipe, O_RDONLY);
     read(receive, input, buff_size); 
     remove(private_pipe);
-    printf("%s\n", input);
+
+    printf("Server PID: %d\n", atoi(input));
+    server_pid = atoi(input);
 
     printf("Sending Message Back to Server to Complete Handshake \n");
     write(send, "Handshake Complete", buff_size);
+    //program doesn't continue if i don't flush stdin for some reason?
     fflush(stdin);
 
     while(1) {
